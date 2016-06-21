@@ -33,5 +33,45 @@ SetEnvIf Remote_Addr "::1" dontlog
     Order allow,deny
     Allow from all
   </Directory>
+
+# Configure an SSO application at the $APPURL provided when generating the metadata XML.
+<Location /addons>
+  # This is the Mellon endpoint provided when generating the metadata XML.
+  MellonEndpointPath /addons/mellon
+
+  # These are the generated private key, certificate, and metadata XML files.
+  MellonSPPrivateKeyFile /etc/httpd/mellon/dxr.allizom.org_addons.key
+  MellonSPCertFile /etc/httpd/mellon/dxr.allizom.org_addons.cert
+  MellonSPMetadataFile /etc/httpd/mellon/dxr.allizom.org_addons.xml
+
+  # This IdP Metadata XML binds this application to our SSO IdP (Okta).
+  MellonIdPMetadataFile /etc/httpd/mellon/dxr.allizom.org_addons.idp-metadata.xml
+
+  # Various other options that do not vary between sites.
+  MellonSecureCookie On
+  MellonSubjectConfirmationDataAddressCheck Off
+</Location>
+
+# This public, unrestricted endpoint is necessary for SAML communication with Mellon.
+<Location /addons/mellon>
+  # We do NOT specify MellonEnable "none" here, because we need Mellon to process requests to this endpoint.
+
+  # Disable authentication for this endpoint.
+  AuthType none
+
+  # Allow all requests to this endpoint.
+  Order allow,deny
+  Allow from all
+  Satisfy any
+</Location>
+
+<Location /addons>
+  # Mellon will intercept requests that do not provide a non-expired session cookie and redirect them momentarily to Okta.
+  MellonEnable "auth"
+  AuthType Mellon
+  # Ensure that we authenticated a valid user through Okta and Mellon. This provides a layer of defense against unplanned issues.
+  require valid-user
+</Location>
+
 </VirtualHost>
 
